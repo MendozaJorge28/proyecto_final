@@ -25,7 +25,7 @@ def reinicio():
     for widget in area_dinamica.winfo_children():
         widget.destroy()
 
-def registro():
+def registrar_trabajadores():
     reinicio()
     tk.Label(area_dinamica, text="Registrar trabajador").pack(pady=10)
 
@@ -67,7 +67,7 @@ def registro():
 
     tk.Button(area_dinamica, text="Registrar", command=guardar_persona).pack(pady=10)
 
-def turno_puesto():
+def elegir_puesto():
     reinicio()
     tk.Label(area_dinamica, text="Asignar Turno").pack(pady=10)
 
@@ -85,7 +85,7 @@ def turno_puesto():
     combo = ttk.Combobox(area_dinamica, values=["Doctor", "Conserje", "Cirujano", "Enfermero"])
     combo.pack()
 
-    def accion_guardar():
+    def guardar_datos():
         try:
             id_trabajador = int(id_entry.get())
             turno = opcion_elegida.get()
@@ -102,10 +102,42 @@ def turno_puesto():
         except ValueError:
             messagebox.showerror("Error", "ID inválido. Debe ser un número.")
 
-    tk.Button(area_dinamica, text="Guardar", command=accion_guardar).pack(pady=10)
+    tk.Button(area_dinamica, text="Guardar", command=guardar_datos).pack(pady=10)
 
-def interfaz_tres():
-    reinicio()
+def ingresar_asistencia():
+        reinicio()
+        tk.Label(area_dinamica, text="Asistencia").pack()
+
+        tk.Label(area_dinamica, text="ID del trabajador").pack()
+        id_entry = tk.Entry(area_dinamica)
+        id_entry.pack()
+
+        def registrar_entrada():
+            try:
+                id_persona = int(id_entry.get())
+                persona = next((p for p in personas_registradas if p.id_persona == id_persona), None)
+                if persona:
+                    persona.asistencias.append(("Entrada", datetime.now()))
+                    messagebox.showinfo("Éxito", "Entrada registrada")
+                else:
+                    messagebox.showerror("Error", "ID no encontrado")
+            except:
+                messagebox.showerror("Error", "ID inválido")
+
+        def registrar_salida():
+            try:
+                id_persona = int(id_entry.get())
+                persona = next((p for p in personas_registradas if p.id_persona == id_persona), None)
+                if persona:
+                    persona.asistencias.append(("Salida", datetime.now()))
+                    messagebox.showinfo("Éxito", "Salida registrada")
+                else:
+                    messagebox.showerror("Error", "ID no encontrado")
+            except:
+                messagebox.showerror("Error", "ID inválido")
+
+        tk.Button(area_dinamica, text="Hora de Entrada", command=registrar_entrada).pack()
+        tk.Button(area_dinamica, text="Hora de Salida", command=registrar_salida).pack()
 
 def interfaz_cuatro():
     reinicio()
@@ -133,13 +165,13 @@ menu_lateral.pack(side="left", fill="y")
 area_dinamica = tk.Frame(ventana_principal, bg="white")
 area_dinamica.pack(side="right", expand=True, fill="both")
 
-tk.Button(menu_lateral, text="Registro", command=registro, width=15).pack(pady=10)
-tk.Button(menu_lateral, text="Turno y Area", command=turno_puesto, width=15).pack(pady=10)
-tk.Button(menu_lateral, text="Asistencia", command=interfaz_tres, width=15).pack(pady=10)
+tk.Button(menu_lateral, text="Registro", command=registrar_trabajadores, width=15).pack(pady=10)
+tk.Button(menu_lateral, text="Turno y Area", command=elegir_puesto, width=15).pack(pady=10)
+tk.Button(menu_lateral, text="Asistencia", command=ingresar_asistencia, width=15).pack(pady=10)
 tk.Button(menu_lateral, text="Vacaciones", command=interfaz_cuatro, width=15).pack(pady=10)
 tk.Button(menu_lateral, text="Trabajadores", command=registrados, width=15).pack(pady=10)
 tk.Button(menu_lateral, text="Salir", command=ventana_principal.destroy, width=15).pack(pady=30)
 
-registro()
+registrar_trabajadores()
 
 ventana_principal.mainloop()
