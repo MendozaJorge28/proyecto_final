@@ -2,6 +2,21 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from datetime import datetime
 
+class Asistencia:
+    def __init__(self, tipo, timestamp):
+        self.tipo = tipo
+        self.timestamp = timestamp
+
+class Vacacion:
+    def __init__(self, inicio, fin):
+        self.inicio = inicio
+        self.fin = fin
+
+class Asignacion:
+    def __init__(self, turno, area):
+        self.turno = turno
+        self.area = area
+
 class Persona:
     def __init__(self, id_persona, nombre, edad, sexo, cedula, domicilio, telefono, correo, inicio):
         self.id_persona = id_persona
@@ -13,17 +28,19 @@ class Persona:
         self.telefono = telefono
         self.correo = correo
         self.inicio = inicio
-        self.turno = None
-        self.area = None
+        self.asignacion = None
         self.vacaciones = []
         self.asistencias = []
-
+        
 personas_registradas = []
 contador_id = 1
 
 def reinicio():
     for widget in area_dinamica.winfo_children():
         widget.destroy()
+
+def buscar_persona(id_):
+    return next((p for p in personas_registradas if p.id_persona == id_), None)
 
 def registrar_trabajadores():
     reinicio()
@@ -45,7 +62,6 @@ def registrar_trabajadores():
 
     def guardar_persona():
         global contador_id
-
         try:
             nombre = entradas["Nombre"].get()
             edad = int(entradas["Edad"].get())
@@ -69,7 +85,7 @@ def registrar_trabajadores():
 
 def elegir_puesto():
     reinicio()
-    tk.Label(area_dinamica, text="Asignar Turno").pack(pady=10)
+    tk.Label(area_dinamica, text="Asignar Turno y Área").pack(pady=10)
 
     tk.Label(area_dinamica, text="ID DEL TRABAJADOR:").pack()
     id_entry = tk.Entry(area_dinamica)
@@ -77,9 +93,9 @@ def elegir_puesto():
 
     tk.Label(area_dinamica, text="Horario:").pack()
     opcion_elegida = tk.StringVar(value="Matutino")
-    tk.Radiobutton(area_dinamica, text="07:00am-03:00pm", variable=opcion_elegida, value="Matutino").pack()
-    tk.Radiobutton(area_dinamica, text="03:00pm-11:00pm", variable=opcion_elegida, value="Vespertino").pack()
-    tk.Radiobutton(area_dinamica, text="11:00pm-07:00am", variable=opcion_elegida, value="Nocturno").pack()
+    horarios = [("07:00am-03:00pm", "Matutino"), ("03:00pm-11:00pm", "Vespertino"), ("11:00pm-07:00am", "Nocturno")]
+    for texto, valor in horarios:
+        tk.Radiobutton(area_dinamica, text=texto, variable=opcion_elegida, value=valor).pack()
 
     tk.Label(area_dinamica, text="Área de trabajo:").pack()
     combo = ttk.Combobox(area_dinamica, values=["Doctor", "Conserje", "Cirujano", "Enfermero"])
@@ -88,72 +104,110 @@ def elegir_puesto():
     def guardar_datos():
         try:
             id_trabajador = int(id_entry.get())
-            turno = opcion_elegida.get()
-            area = combo.get()
-
-            persona = next((p for p in personas_registradas if p.id_persona == id_trabajador), None)
+            persona = buscar_persona(id_trabajador)
             if persona:
-                persona.turno = turno
-                persona.area = area
-                messagebox.showinfo("Asignación", f"Asignación exitosa para ID {id_trabajador}")
+                turno = opcion_elegida.get()
+                area = combo.get()
+                persona.asignacion = Asignacion(turno, area)
+                messagebox.showinfo("Asignación", f"Turno y área asignados al trabajador ID {id_trabajador}")
             else:
-                messagebox.showerror("Error", f"No se encontró trabajador con ID {id_trabajador}")
-
-        except ValueError:
-            messagebox.showerror("Error", "ID inválido. Debe ser un número.")
+                messagebox.showerror("Error", "Trabajador no encontrado")
+        except:
+            messagebox.showerror("Error", "ID inválido")
 
     tk.Button(area_dinamica, text="Guardar", command=guardar_datos).pack(pady=10)
 
 def ingresar_asistencia():
-        reinicio()
-        tk.Label(area_dinamica, text="Asistencia").pack()
-
-        tk.Label(area_dinamica, text="ID del trabajador").pack()
-        id_entry = tk.Entry(area_dinamica)
-        id_entry.pack()
-
-        def registrar_entrada():
-            try:
-                id_persona = int(id_entry.get())
-                persona = next((p for p in personas_registradas if p.id_persona == id_persona), None)
-                if persona:
-                    persona.asistencias.append(("Entrada", datetime.now()))
-                    messagebox.showinfo("Éxito", "Entrada registrada")
-                else:
-                    messagebox.showerror("Error", "ID no encontrado")
-            except:
-                messagebox.showerror("Error", "ID inválido")
-
-        def registrar_salida():
-            try:
-                id_persona = int(id_entry.get())
-                persona = next((p for p in personas_registradas if p.id_persona == id_persona), None)
-                if persona:
-                    persona.asistencias.append(("Salida", datetime.now()))
-                    messagebox.showinfo("Éxito", "Salida registrada")
-                else:
-                    messagebox.showerror("Error", "ID no encontrado")
-            except:
-                messagebox.showerror("Error", "ID inválido")
-
-        tk.Button(area_dinamica, text="Hora de Entrada", command=registrar_entrada).pack()
-        tk.Button(area_dinamica, text="Hora de Salida", command=registrar_salida).pack()
-
-def interfaz_cuatro():
     reinicio()
+    tk.Label(area_dinamica, text="Asistencia").pack()
+
+    tk.Label(area_dinamica, text="ID del trabajador").pack()
+    id_entry = tk.Entry(area_dinamica)
+    id_entry.pack()
+
+    def registrar(tipo):
+        try:
+            id_persona = int(id_entry.get())
+            persona = buscar_persona(id_persona)
+            if persona:
+                persona.asistencias.append(Asistencia(tipo, datetime.now()))
+                messagebox.showinfo("Éxito", f"{tipo} registrada")
+            else:
+                messagebox.showerror("Error", "ID no encontrado")
+        except:
+            messagebox.showerror("Error", "ID inválido")
+
+    tk.Button(area_dinamica, text="Hora de Entrada", command=lambda: registrar("Entrada")).pack()
+    tk.Button(area_dinamica, text="Hora de Salida", command=lambda: registrar("Salida")).pack()
+
+def ingresar_vacaciones():
+    reinicio()
+    tk.Label(area_dinamica, text="Registrar Vacaciones").pack(pady=10)
+
+    tk.Label(area_dinamica, text="ID del trabajador").pack()
+    id_entry = tk.Entry(area_dinamica)
+    id_entry.pack()
+
+    tk.Label(area_dinamica, text="Fecha inicio (YYYY-MM-DD)").pack()
+    entrada_inicio = tk.Entry(area_dinamica)
+    entrada_inicio.pack()
+
+    tk.Label(area_dinamica, text="Fecha fin (YYYY-MM-DD)").pack()
+    entrada_fin = tk.Entry(area_dinamica)
+    entrada_fin.pack()
+
+    def registrar_vacaciones():
+        try:
+            id_trabajador = int(id_entry.get())
+            persona = buscar_persona(id_trabajador)
+            if persona:
+                inicio = datetime.strptime(entrada_inicio.get(), "%Y-%m-%d").date()
+                fin = datetime.strptime(entrada_fin.get(), "%Y-%m-%d").date()
+                persona.vacaciones.append(Vacacion(inicio, fin))
+                messagebox.showinfo("Éxito", "Vacaciones registradas")
+            else:
+                messagebox.showerror("Error", "ID no encontrado")
+        except Exception as e:
+            messagebox.showerror("Error", f"Datos inválidos: {e}")
+
+    tk.Button(area_dinamica, text="Registrar Vacaciones", command=registrar_vacaciones).pack(pady=10)
+
+def horarios_registrados():
+    reinicio()
+    tk.Label(area_dinamica, text="Historial de Asistencias y Vacaciones").pack()
+
+    for persona in personas_registradas:
+        tk.Label(area_dinamica, text=f"ID: {persona.id_persona} - {persona.nombre}").pack(anchor="w", padx=10)
+
+        if persona.asistencias:
+            tk.Label(area_dinamica, text="Asistencias:").pack(anchor="w", padx=20)
+            for a in persona.asistencias:
+                tk.Label(area_dinamica, text=f"   {a.tipo} - {a.timestamp.strftime('%Y-%m-%d %H:%M:%S')}").pack(anchor="w", padx=40)
+        else:
+            tk.Label(area_dinamica, text="Sin asistencias").pack(anchor="w", padx=20)
+
+        if persona.vacaciones:
+            tk.Label(area_dinamica, text="Vacaciones:").pack(anchor="w", padx=20)
+            for v in persona.vacaciones:
+                tk.Label(area_dinamica, text=f"   Del {v.inicio} al {v.fin}").pack(anchor="w", padx=40)
+        else:
+            tk.Label(area_dinamica, text="  Sin vacaciones").pack(anchor="w", padx=20)
+
+        tk.Label(area_dinamica, text="").pack()  # Espacio entre personas
 
 def registrados():
     reinicio()
     tk.Label(area_dinamica, text="Trabajadores Registrados").pack(pady=10)
     for persona in personas_registradas:
+        turno = persona.asignacion.turno if persona.asignacion else "N/A"
+        area = persona.asignacion.area if persona.asignacion else "N/A"
         info = (
             f"ID: {persona.id_persona}, Nombre: {persona.nombre}, Edad: {persona.edad}, Sexo: {persona.sexo}, "
             f"Cédula: {persona.cedula}, Domicilio: {persona.domicilio}, Teléfono: {persona.telefono}, "
-            f"Correo: {persona.correo}, Inicio de trabajo: {persona.inicio}, Turno: {persona.turno or "ERROR"}, "
-            f"Área de trabajo: {persona.area or 'ERROR'}"
+            f"Correo: {persona.correo}, Inicio de trabajo: {persona.inicio}, Turno: {turno}, Área de trabajo: {area}"
         )
         tk.Label(area_dinamica, text=info, anchor="w", justify="left").pack(fill="x", padx=10)
-
+        
 ventana_principal = tk.Tk()
 ventana_principal.title("Interfaz para prácticas")
 ventana_principal.geometry("1000x800")
@@ -166,11 +220,16 @@ area_dinamica = tk.Frame(ventana_principal, bg="white")
 area_dinamica.pack(side="right", expand=True, fill="both")
 
 tk.Button(menu_lateral, text="Registro", command=registrar_trabajadores, width=15).pack(pady=10)
-tk.Button(menu_lateral, text="Turno y Area", command=elegir_puesto, width=15).pack(pady=10)
+tk.Button(menu_lateral, text="Turno y Área", command=elegir_puesto, width=15).pack(pady=10)
 tk.Button(menu_lateral, text="Asistencia", command=ingresar_asistencia, width=15).pack(pady=10)
-tk.Button(menu_lateral, text="Vacaciones", command=interfaz_cuatro, width=15).pack(pady=10)
+tk.Button(menu_lateral, text="Vacaciones", command=ingresar_vacaciones, width=15).pack(pady=10)
 tk.Button(menu_lateral, text="Trabajadores", command=registrados, width=15).pack(pady=10)
+tk.Button(menu_lateral, text="A y I", command=horarios_registrados, width=15).pack(pady=10)
 tk.Button(menu_lateral, text="Salir", command=ventana_principal.destroy, width=15).pack(pady=30)
+
+registrar_trabajadores()
+
+ventana_principal.mainloop()
 
 registrar_trabajadores()
 
