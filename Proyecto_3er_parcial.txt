@@ -3,9 +3,10 @@ from tkinter import messagebox, ttk
 from datetime import datetime
 
 class Asistencia:
-    def __init__(self, tipo, timestamp):
+    def __init__(self, tipo, timestamp, retardo=False):
         self.tipo = tipo
         self.timestamp = timestamp
+        self.retardo = retardo
 
 class Vacacion:
     def __init__(self, inicio, fin):
@@ -156,7 +157,28 @@ def ingresar_asistencia():
                     messagebox.showerror("Error", f"{tipo} ya fue registrada hoy.")
                     return
 
-            persona.asistencias.append(Asistencia(tipo, datetime.now()))
+            if tipo == "Entrada":
+                if not persona.asignacion:
+                    messagebox.showerror("Error", "El trabajador no tiene asignado turno.")
+                    return
+
+                hora_actual = datetime.now().time()
+                retardo = False
+                limites = {
+                    "Matutino": datetime.strptime("07:15", "%H:%M").time(),
+                    "Vespertino": datetime.strptime("15:15", "%H:%M").time(),
+                    "Nocturno": datetime.strptime("23:15", "%H:%M").time(),
+                }
+                turno = persona.asignacion.turno
+                hora_limite = limites.get(turno)
+
+                if hora_actual > hora_limite:
+                    retardo = True
+
+                persona.asistencias.append(Asistencia(tipo, datetime.now(), retardo))
+            else:
+                persona.asistencias.append(Asistencia(tipo, datetime.now()))
+
             messagebox.showinfo("Éxito", f"{tipo} registrada correctamente.")
 
         except:
@@ -210,7 +232,10 @@ def horarios_registrados():
         if persona.asistencias:
             tk.Label(area_dinamica, text="Asistencias:").pack(anchor="w", padx=10)
             for a in persona.asistencias:
-                tk.Label(area_dinamica, text=f"{a.tipo} - {a.timestamp.strftime('%Y-%m-%d %H:%M:%S')}").pack(anchor="w", padx=10)
+                texto = f"{a.tipo} - {a.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
+                if a.tipo == "Entrada" and a.retardo:
+                    texto += " (RETARDO)"
+                tk.Label(area_dinamica, text=texto).pack(anchor="w", padx=10)
         else:
             tk.Label(area_dinamica, text="Sin asistencias").pack(anchor="w", padx=10)
 
@@ -257,6 +282,7 @@ tk.Button(menu_lateral, text="Salir", command=ventana_principal.destroy, width=1
 
 registrar_trabajadores()
 ventana_principal.mainloop()
+
 
 registrar_trabajadores()
 
