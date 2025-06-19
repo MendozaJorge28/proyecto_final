@@ -31,7 +31,7 @@ class Persona:
         self.asignacion = None
         self.vacaciones = []
         self.asistencias = []
-        
+
 personas_registradas = []
 contador_id = 1
 
@@ -63,6 +63,10 @@ def registrar_trabajadores():
     def guardar_persona():
         global contador_id
         try:
+            if not all(entrada.get() for entrada in entradas.values()):
+                messagebox.showerror("Error", "Todos los campos deben estar llenos.")
+                return
+
             nombre = entradas["Nombre"].get()
             edad = int(entradas["Edad"].get())
             sexo = sexo_elegido.get()
@@ -71,6 +75,10 @@ def registrar_trabajadores():
             telefono = int(entradas["Teléfono"].get())
             correo = entradas["Correo"].get()
             inicio = datetime.strptime(entradas["Fecha de inicio"].get(), "%Y-%m-%d").date()
+
+            if any(p.correo == correo or p.cedula == cedula for p in personas_registradas):
+                messagebox.showerror("Error", "Ya existe un trabajador con ese correo o cédula.")
+                return
 
             persona = Persona(contador_id, nombre, edad, sexo, cedula, domicilio, telefono, correo, inicio)
             personas_registradas.append(persona)
@@ -108,6 +116,9 @@ def elegir_puesto():
             if persona:
                 turno = opcion_elegida.get()
                 area = combo.get()
+                if not area:
+                    messagebox.showerror("Error", "Selecciona un área.")
+                    return
                 persona.asignacion = Asignacion(turno, area)
                 messagebox.showinfo("Asignación", f"Turno y área asignados al trabajador ID {id_trabajador}")
             else:
@@ -129,11 +140,25 @@ def ingresar_asistencia():
         try:
             id_persona = int(id_entry.get())
             persona = buscar_persona(id_persona)
-            if persona:
-                persona.asistencias.append(Asistencia(tipo, datetime.now()))
-                messagebox.showinfo("Éxito", f"{tipo} registrada")
-            else:
+            if not persona:
                 messagebox.showerror("Error", "ID no encontrado")
+                return
+
+            hoy = datetime.now().date()
+
+            for vacacion in persona.vacaciones:
+                if vacacion.inicio <= hoy <= vacacion.fin:
+                    messagebox.showerror("Error", "El trabajador está de vacaciones hoy.")
+                    return
+
+            for asistencia in persona.asistencias:
+                if asistencia.timestamp.date() == hoy and asistencia.tipo == tipo:
+                    messagebox.showerror("Error", f"{tipo} ya fue registrada hoy.")
+                    return
+
+            persona.asistencias.append(Asistencia(tipo, datetime.now()))
+            messagebox.showinfo("Éxito", f"{tipo} registrada correctamente.")
+
         except:
             messagebox.showerror("Error", "ID inválido")
 
@@ -163,6 +188,9 @@ def ingresar_vacaciones():
             if persona:
                 inicio = datetime.strptime(entrada_inicio.get(), "%Y-%m-%d").date()
                 fin = datetime.strptime(entrada_fin.get(), "%Y-%m-%d").date()
+                if fin < inicio:
+                    messagebox.showerror("Error", "La fecha final no puede ser anterior a la de inicio.")
+                    return
                 persona.vacaciones.append(Vacacion(inicio, fin))
                 messagebox.showinfo("Éxito", "Vacaciones registradas")
             else:
@@ -180,20 +208,20 @@ def horarios_registrados():
         tk.Label(area_dinamica, text=f"ID: {persona.id_persona} - {persona.nombre}").pack(anchor="w", padx=10)
 
         if persona.asistencias:
-            tk.Label(area_dinamica, text="Asistencias:").pack(anchor="w", padx=20)
+            tk.Label(area_dinamica, text="Asistencias:").pack(anchor="w", padx=10)
             for a in persona.asistencias:
-                tk.Label(area_dinamica, text=f"   {a.tipo} - {a.timestamp.strftime('%Y-%m-%d %H:%M:%S')}").pack(anchor="w", padx=40)
+                tk.Label(area_dinamica, text=f"{a.tipo} - {a.timestamp.strftime('%Y-%m-%d %H:%M:%S')}").pack(anchor="w", padx=10)
         else:
-            tk.Label(area_dinamica, text="Sin asistencias").pack(anchor="w", padx=20)
+            tk.Label(area_dinamica, text="Sin asistencias").pack(anchor="w", padx=10)
 
         if persona.vacaciones:
-            tk.Label(area_dinamica, text="Vacaciones:").pack(anchor="w", padx=20)
+            tk.Label(area_dinamica, text="Vacaciones:").pack(anchor="w", padx=10)
             for v in persona.vacaciones:
-                tk.Label(area_dinamica, text=f"   Del {v.inicio} al {v.fin}").pack(anchor="w", padx=40)
+                tk.Label(area_dinamica, text=f"   Del {v.inicio} al {v.fin}").pack(anchor="w", padx=10)
         else:
-            tk.Label(area_dinamica, text="  Sin vacaciones").pack(anchor="w", padx=20)
+            tk.Label(area_dinamica, text="  Sin vacaciones").pack(anchor="w", padx=10)
 
-        tk.Label(area_dinamica, text="").pack()  # Espacio entre personas
+        tk.Label(area_dinamica, text="").pack()
 
 def registrados():
     reinicio()
@@ -204,10 +232,10 @@ def registrados():
         info = (
             f"ID: {persona.id_persona}, Nombre: {persona.nombre}, Edad: {persona.edad}, Sexo: {persona.sexo}, "
             f"Cédula: {persona.cedula}, Domicilio: {persona.domicilio}, Teléfono: {persona.telefono}, "
-            f"Correo: {persona.correo}, Inicio de trabajo: {persona.inicio}, Turno: {turno}, Área de trabajo: {area}"
+            f"Correo: {persona.correo}, Inicio de trabajo: {persona.inicio}, Turno: {turno}, Área: {area}"
         )
         tk.Label(area_dinamica, text=info, anchor="w", justify="left").pack(fill="x", padx=10)
-        
+
 ventana_principal = tk.Tk()
 ventana_principal.title("Interfaz para prácticas")
 ventana_principal.geometry("1000x800")
@@ -228,7 +256,6 @@ tk.Button(menu_lateral, text="A y I", command=horarios_registrados, width=15).pa
 tk.Button(menu_lateral, text="Salir", command=ventana_principal.destroy, width=15).pack(pady=30)
 
 registrar_trabajadores()
-
 ventana_principal.mainloop()
 
 registrar_trabajadores()
