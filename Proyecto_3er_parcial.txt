@@ -3,10 +3,11 @@ from tkinter import messagebox, ttk
 from datetime import datetime
 
 class Asistencia:
-    def __init__(self, tipo, timestamp, retardo=False):
-        self.tipo = tipo
+    def __init__(self, registro, timestamp, retardo=False, incumplimiento=False):
+        self.registro = registro
         self.timestamp = timestamp
         self.retardo = retardo
+        self.incumplimiento = incumplimiento
 
 class Vacacion:
     def __init__(self, inicio, fin):
@@ -137,7 +138,7 @@ def ingresar_asistencia():
     id_entry = tk.Entry(area_dinamica)
     id_entry.pack()
 
-    def registrar(tipo):
+    def registrar(registro):
         try:
             id_persona = int(id_entry.get())
             persona = buscar_persona(id_persona)
@@ -153,11 +154,11 @@ def ingresar_asistencia():
                     return
 
             for asistencia in persona.asistencias:
-                if asistencia.timestamp.date() == hoy and asistencia.tipo == tipo:
-                    messagebox.showerror("Error", f"{tipo} ya fue registrada hoy.")
+                if asistencia.timestamp.date() == hoy and asistencia.registro == registro:
+                    messagebox.showerror("Error", f"{registro} ya fue registrada hoy.")
                     return
 
-            if tipo == "Entrada":
+            if registro == "Entrada":
                 if not persona.asignacion:
                     messagebox.showerror("Error", "El trabajador no tiene asignado turno.")
                     return
@@ -175,11 +176,28 @@ def ingresar_asistencia():
                 if hora_actual > hora_limite:
                     retardo = True
 
-                persona.asistencias.append(Asistencia(tipo, datetime.now(), retardo))
+                persona.asistencias.append(Asistencia(registro, datetime.now(), retardo))
             else:
-                persona.asistencias.append(Asistencia(tipo, datetime.now()))
+                incumplimiento = False
+                if persona.asignacion:
+                    turno = persona.asignacion.turno
+                    limites_salida = {
+                        "Matutino": datetime.strptime("15:00", "%H:%M").time(),
+                        "Vespertino": datetime.strptime("23:00", "%H:%M").time(),
+                        "Nocturno": datetime.strptime("07:00", "%H:%M").time(),
+                    }
+                    hora_salida_limite = limites_salida.get(turno)
+                    hora_actual = datetime.now().time()
 
-            messagebox.showinfo("Éxito", f"{tipo} registrada correctamente.")
+                    if turno != "Nocturno" and hora_actual < hora_salida_limite:
+                        incumplimiento = True
+                    elif turno == "Nocturno":
+                        if datetime.now().hour >= 7:
+                            incumplimiento = True
+
+                persona.asistencias.append(Asistencia(registro, datetime.now(), incumplimiento=incumplimiento))
+
+            messagebox.showinfo("Éxito", f"{registro} registrada correctamente.")
 
         except:
             messagebox.showerror("Error", "ID inválido")
@@ -235,6 +253,8 @@ def horarios_registrados():
                 texto = f"{a.tipo} - {a.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
                 if a.tipo == "Entrada" and a.retardo:
                     texto += " (RETARDO)"
+                if a.tipo == "Salida" and a.incumplimiento:
+                    texto += " (INCUMPLIMIENTO)"
                 tk.Label(area_dinamica, text=texto).pack(anchor="w", padx=10)
         else:
             tk.Label(area_dinamica, text="Sin asistencias").pack(anchor="w", padx=10)
@@ -244,7 +264,7 @@ def horarios_registrados():
             for v in persona.vacaciones:
                 tk.Label(area_dinamica, text=f"   Del {v.inicio} al {v.fin}").pack(anchor="w", padx=10)
         else:
-            tk.Label(area_dinamica, text="  Sin vacaciones").pack(anchor="w", padx=10)
+            tk.Label(area_dinamica, text="Sin vacaciones").pack(anchor="w", padx=10)
 
         tk.Label(area_dinamica, text="").pack()
 
@@ -260,6 +280,37 @@ def registrados():
             f"Correo: {persona.correo}, Inicio de trabajo: {persona.inicio}, Turno: {turno}, Área: {area}"
         )
         tk.Label(area_dinamica, text=info, anchor="w", justify="left").pack(fill="x", padx=10)
+
+def avisos():
+    reinicio()
+    tk.Label(area_dinamica, text="Historial de Retardos e Incumplimientos").pack(pady=10)
+
+    for persona in personas_registradas:
+        retardos = sum(1 for a in persona.asistencias if a.tipo == "Entrada" and a.retardo)
+        incumplimientos = sum(1 for a in persona.asistencias if a.tipo == "Salida" and a.incumplimiento)
+
+        if retardos == 0 and incumplimientos == 0:
+            continue
+
+        info = f"ID: {persona.id_persona} - {persona.nombre}"
+        faltas = []
+
+        if retardos > 0:
+            mensaje = f"Retardos: {retardos}"
+            if retardos >= 3:
+                mensaje += " (RETARDO MAYOR)"
+            faltas.append(mensaje)
+
+        if incumplimientos > 0:
+            mensaje =f"Incumplimientos: {incumplimientos}"
+            if incumplimientos >= 3:
+                mensaje += " (INCUMPLIMIENTO MAYOR)"
+            faltas.append(mensaje)
+
+        tk.Label(area_dinamica, text=info).pack(anchor="w", padx=10)
+        for linea in faltas:
+            tk.Label(area_dinamica, text="" + linea).pack(anchor="w", padx=10)
+
 
 ventana_principal = tk.Tk()
 ventana_principal.title("Interfaz para prácticas")
@@ -277,7 +328,8 @@ tk.Button(menu_lateral, text="Turno y Área", command=elegir_puesto, width=15).p
 tk.Button(menu_lateral, text="Asistencia", command=ingresar_asistencia, width=15).pack(pady=10)
 tk.Button(menu_lateral, text="Vacaciones", command=ingresar_vacaciones, width=15).pack(pady=10)
 tk.Button(menu_lateral, text="Trabajadores", command=registrados, width=15).pack(pady=10)
-tk.Button(menu_lateral, text="A y I", command=horarios_registrados, width=15).pack(pady=10)
+tk.Button(menu_lateral, text="Historial asistencias", command=horarios_registrados, width=15).pack(pady=10)
+tk.Button(menu_lateral, text="Historial retardos", command=avisos, width=15).pack(pady=10)
 tk.Button(menu_lateral, text="Salir", command=ventana_principal.destroy, width=15).pack(pady=30)
 
 registrar_trabajadores()
